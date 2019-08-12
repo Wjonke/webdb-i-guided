@@ -5,14 +5,11 @@ const db = require('../data/db-config.js');
 
 const router = express.Router();
 
-
-//since we are using knex, we are going to use knex commands for our logic
-
-//get all 'posts'
 router.get('/', (req, res) => {
+  const { limit, orderby } = req.query;
+
   db.select('id', 'title', 'contents')
     .from('posts')
-    // db('posts') // returns a promise that resolves to all records from the posts
     .then(posts => {
       res.status(200).json(posts);
     })
@@ -21,10 +18,10 @@ router.get('/', (req, res) => {
     });
 });
 
-//get 'posts' by user id
 router.get('/:id', (req, res) => {
   db('posts')
     .where({ id: req.params.id })
+    .first()
     .then(post => {
       res.status(200).json(post);
     })
@@ -33,48 +30,51 @@ router.get('/:id', (req, res) => {
     });
 });
 
-//post a new "post"
 router.post('/', (req, res) => {
   const post = req.body;
-  //this is where we would validate the post before saving to the DB
-  db('posts')//call db and then pass in the posts
-    .insert(post, 'id')// insert is a knex command, inserts a post, returns an array containing the id of the post added
+  // validate the the post data is correct before saving to the db
+  db('posts')
+    .insert(post, 'id')
+    .then(post => {
+      res.status(200).json(post);
+    })
     .catch(error => {
-      res.status(500).json({ message: 'error getting the post from db' });
+      res.status(500).json({ message: 'error saving the post to the db' });
     });
 });
 
-//edit a 'post'//returns a count f records that were update
 router.put('/:id', (req, res) => {
-db('posts')
-  .where( 'id', '=', req.params.id )
-  .update({changes})//before we do this update we MUST select what we want to change specifically or it will chang ALL posts!!
-  .then(count => {
-    if (count >0){
-      res.status(200).json(count);
-    }else{
-      res.status(500).json({ message: 'No post found with this id' });
-    } 
-  })
-  .catch(error => {
-    res.status(500).json({ message: 'error getting the post from db' });
-  });
+  const changes = req.body;
+
+  db('posts')
+    .where('id', '=', req.params.id)
+    .update(changes)
+    .then(count => {
+      if (count > 0) {
+        res.status(200).json(count);
+      } else {
+        res.status(404).json({ message: 'not found' });
+      }
+    })
+    .catch(error => {
+      res.status(500).json({ message: 'error updating the post' });
+    });
 });
 
-//delete a post
 router.delete('/:id', (req, res) => {
   db('posts')
-  .del()
-  .then(count => {
-    if (count > 0){
-      res.status(200).json(count);
-    }else{
-      res.status(500).json({ message: 'No post found with this id' });
-    } 
-  })
-  .catch(error => {
-    res.status(500).json({ message: 'error removing the post from db' });
-  });
-
+    .where('id', '=', req.params.id)
+    .del()
+    .then(count => {
+      if (count > 0) {
+        res.status(200).json(count);
+      } else {
+        res.status(404).json({ message: 'not found' });
+      }
+    })
+    .catch(error => {
+      res.status(500).json({ message: 'error removing the post' });
+    });
 });
+
 module.exports = router;
